@@ -1,7 +1,45 @@
 # import faulthandler
 # faulthandler.enable()
 
-from modules import launch_utils
+from __future__ import print_function
+
+import builtins as __builtin__
+import logging
+import os
+
+from rich.console import Console
+from rich.logging import RichHandler
+from rich.theme import Theme
+
+console = Console(theme=Theme({"logging.level.ok": "green"}))
+
+loglevel = os.environ.get("SD_WEBUI_LOG_LEVEL", "INFO").upper()
+FORMAT = "%(message)s"
+logging.basicConfig(
+    level=loglevel,
+    format=FORMAT,
+    datefmt="[%X]",
+    handlers=[
+        RichHandler(
+            rich_tracebacks=True,
+            tracebacks_show_locals=True,
+            console=console,
+            show_time=False,
+        )
+    ],
+)
+level_ok = 25
+logging.addLevelName(level_ok, "OK")
+
+print_log = logging.getLogger()
+print_default = __builtin__.print
+__builtin__.print = lambda *args, **kwargs: (
+    print_log.log(level=level_ok, msg=" ".join(map(str, args)))
+    if loglevel
+    else print_default(*args, **kwargs)
+)
+
+from modules import launch_utils  # noqa: E402
 
 args = launch_utils.args
 python = launch_utils.python
