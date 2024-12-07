@@ -9,6 +9,7 @@ class TotalTQDM:
 
     def reset(self):
         self._tqdm = tqdm.tqdm(
+            colour="green",
             desc="Total progress",
             total=shared.state.job_count * shared.state.sampling_steps,
             position=1,
