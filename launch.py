@@ -74,6 +74,7 @@ def set_rich():
         else print_default(*args, **kwargs)
     )
     progress = Progress(
+        TextColumn("{task.id}", justify="right"),
         TextColumn("[progress.description]{task.description}"),
         ":",
         BarColumn(),
@@ -82,7 +83,8 @@ def set_rich():
         TimeElapsedColumn(),
         "->",
         TimeRemainingColumn(),
-        TextColumn("{task.fields[info]}"),
+        TextColumn("{task.fields[info_1]}", justify="right"),
+        TextColumn("{task.fields[info_2]}", justify="right"),
         console=console,
     )
     return progress
