@@ -9,35 +9,16 @@ import os
 
 from rich.console import Console
 from rich.logging import RichHandler
+from rich.progress import (
+    BarColumn,
+    MofNCompleteColumn,
+    Progress,
+    TextColumn,
+    TimeElapsedColumn,
+    TimeRemainingColumn,
+)
+from rich.table import Column
 from rich.theme import Theme
-
-console = Console(theme=Theme({"logging.level.ok": "green"}))
-
-loglevel = os.environ.get("SD_WEBUI_LOG_LEVEL", "INFO").upper()
-FORMAT = "%(message)s"
-logging.basicConfig(
-    level=loglevel,
-    format=FORMAT,
-    datefmt="[%X]",
-    handlers=[
-        RichHandler(
-            rich_tracebacks=True,
-            tracebacks_show_locals=True,
-            console=console,
-            show_time=False,
-        )
-    ],
-)
-level_ok = 25
-logging.addLevelName(level_ok, "OK")
-
-print_log = logging.getLogger()
-print_default = __builtin__.print
-__builtin__.print = lambda *args, **kwargs: (
-    print_log.log(level=level_ok, msg=" ".join(map(str, args)))
-    if loglevel
-    else print_default(*args, **kwargs)
-)
 
 from modules import launch_utils  # noqa: E402
 
@@ -63,6 +44,51 @@ run_extension_installer = launch_utils.run_extension_installer
 prepare_environment = launch_utils.prepare_environment
 configure_for_tests = launch_utils.configure_for_tests
 start = launch_utils.start
+
+
+def set_rich():
+    loglevel = os.environ.get("SD_WEBUI_LOG_LEVEL", "INFO").upper()
+    console = Console(theme=Theme({"logging.level.ok": "green"}))
+    level_ok = 25
+    logging.addLevelName(level_ok, "OK")
+
+    formatter = logging.Formatter(
+        "%(message)s",
+        "%Y-%m-%d %H:%M:%S",
+    )
+    handler = RichHandler(
+        level=loglevel,
+        rich_tracebacks=True,
+        tracebacks_show_locals=True,
+        console=console,
+        show_time=False,
+    )
+    handler.setFormatter(formatter)
+    logging.root.setLevel(loglevel)
+    logging.root.handlers = [handler]
+    # print_log = logging.getLogger()
+    print_default = __builtin__.print
+    __builtin__.print = lambda *args, **kwargs: (
+        logging.root.log(level=level_ok, msg=" ".join(map(str, args)))
+        if loglevel
+        else print_default(*args, **kwargs)
+    )
+    progress = Progress(
+        TextColumn("[progress.description]{task.description}"),
+        ":",
+        BarColumn(),
+        MofNCompleteColumn(table_column=Column(justify="center")),
+        "·",
+        TimeElapsedColumn(),
+        "->",
+        TimeRemainingColumn(),
+        TextColumn("{task.fields[info]}"),
+        console=console,
+    )
+    return progress
+
+
+progress = set_rich()
 
 
 def main():
