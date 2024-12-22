@@ -45,12 +45,15 @@ prepare_environment = launch_utils.prepare_environment
 configure_for_tests = launch_utils.configure_for_tests
 start = launch_utils.start
 
+# Constants
+LEVEL_OK = 25
+PRINT_DEFAULT = __builtin__.print
+LOG_LEVEL_ENV = "SD_WEBUI_LOG_LEVEL"
+LOG_LEVEL_DEFAULT = "INFO"
 
-def set_rich():
-    loglevel = os.environ.get("SD_WEBUI_LOG_LEVEL", "INFO").upper()
-    console = Console(theme=Theme({"logging.level.ok": "green"}))
-    level_ok = 25
-    logging.addLevelName(level_ok, "OK")
+
+def configure_logging(console, loglevel):
+    logging.addLevelName(LEVEL_OK, "OK")
 
     formatter = logging.Formatter(
         "%(message)s",
@@ -66,14 +69,23 @@ def set_rich():
     handler.setFormatter(formatter)
     logging.root.setLevel(loglevel)
     logging.root.handlers = [handler]
-    # print_log = logging.getLogger()
-    print_default = __builtin__.print
-    __builtin__.print = lambda *args, **kwargs: (
-        logging.root.log(level=level_ok, msg=" ".join(map(str, args)))
-        if loglevel
-        else print_default(*args, **kwargs)
-    )
-    progress = Progress(
+
+    def custom_print(*args, **kwargs):
+        if loglevel:
+            # Pre-join strings for better performance
+            message = " ".join(str(arg) for arg in args)
+            logging.root.log(level=LEVEL_OK, msg=message)
+        else:
+            PRINT_DEFAULT(*args, **kwargs)
+
+    __builtin__.print = custom_print
+
+
+def set_rich():
+    loglevel = os.environ.get(LOG_LEVEL_ENV, LOG_LEVEL_DEFAULT).upper()
+    console = Console(theme=Theme({"logging.level.ok": "green"}))
+    configure_logging(console, loglevel)
+    return Progress(
         TextColumn("{task.id}", justify="right"),
         TextColumn("[progress.description]{task.description}"),
         ":",
@@ -87,7 +99,6 @@ def set_rich():
         TextColumn("{task.fields[info_2]}", justify="right"),
         console=console,
     )
-    return progress
 
 
 progress = set_rich()
